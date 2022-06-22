@@ -152,7 +152,9 @@ reh_vector <- function(reh_number, year, month){
   return(aufenthalt)
 }
 ```
+
 Here is an example what the output looks like:
+
 ```{r}
 #test function
 reh_vector("RE01", 2013, 11)
@@ -170,6 +172,7 @@ input_data <- deer %>%
 
 head(input_data)
 ```
+
 # loop
 learning how a loop works to create a dataframe whereas the function created before is aplied to all input combinations.
 
@@ -180,6 +183,7 @@ for(i in 1:length(input_data$reh)){
   y <- rbind(y, result)
 }
 ```
+
 # improve loop
 Even though the loop works fine, using the the map function from the purrr library (within tidiverse) is the more sophisticated variant. This no longer needs an empty object.
 
@@ -188,6 +192,7 @@ map(1:2, function(i){
   reh_vector(input_data$reh[i], input_data$year[i], input_data$month[i])
 })
 ```
+
 # improve to get dataframe
 
 In order to get a dataframe as an output, the function pmap_dfr must be used.
@@ -197,34 +202,47 @@ data_in_out <- pmap_dfr(input_data, function(reh, year, month){
   reh_vector(reh, year, month)
 })
 ```
-# Results
+
+# data preparation for results
 The resulting data frame can be used to explore behavior of the deers in different months, but also between animals. This is vizualized using ggplot.
 
-For this, input data is prepared:
+For this, input data for the plots is prepared:
 
 ```{r}
 avg_month <- data_in_out %>%
   group_by(month) %>%
-  summarise(avg_innerhalb = mean(innerhalb), avg_ausserhalb = mean(ausserhalb))
+  summarise(inside_forest = mean(innerhalb), outside_forest = mean(ausserhalb)) %>%
+  #mutate(month = month.abb) %>% 
+  #took this out, because I couldn't manage to order them chronologically with this included
+  pivot_longer(inside_forest:outside_forest, names_to = "in_out", values_to = "count")
+
+# anotherr failed try to implement month names rather than their number
+#avg_month$month = factor(avg_month$month, levels = month.abb)
 
 avg_deer <- data_in_out %>%
   group_by(reh) %>%
-  summarise(avg_innerhalb = mean(innerhalb), avg_ausserhalb = mean(ausserhalb))
+  summarise(inside_forest = mean(innerhalb), outside_forest = mean(ausserhalb)) %>%
+  pivot_longer(inside_forest:outside_forest, names_to = "in_out", values_to = "count")
+  
+  
 ```
 
-# Diagrams come here.
+# results
 
+Creating the plot for month comparison. The deers then to stay more often in the forest during winter.
 
+```{r}
+ggplot(avg_month, aes(x = month, y = count, fill = in_out)) +
+  geom_bar(stat = "identity", position = "fill") +
+  ggtitle("points inside and outside forest per month") +
+  theme(legend.position = "bottom")
+```
 
+Creating the plot for each animal. There is no pattern visible. However, animal 3, 8, 9 and 14 raises the question if there is anything wrong with the code, since it seems unlilkely that they spend all their time outside of the forest. 
 
-
-
-
-
-
-
-
-
-
-
-
+```{r}
+ggplot(avg_deer, aes(x = reh, y = count, fill = in_out)) +
+  geom_bar(stat = "identity", position = "fill", width = 0.9) +
+  ggtitle("points inside and outside forest per animal") +
+  theme(legend.position = "bottom")
+```
